@@ -7,6 +7,22 @@ def _get_database_url() -> str:
     return os.getenv("DATABASE_URL") or "sqlite:///./sign_language_app.db"
 
 
+def _normalize_database_url(url: str) -> str:
+    u = (url or "").strip()
+    if not u:
+        return u
+
+    # Render (and some providers) use postgres:// which SQLAlchemy expects as postgresql://
+    if u.startswith("postgres://"):
+        u = "postgresql://" + u[len("postgres://"):]
+
+    # Ensure SQLAlchemy uses psycopg v3 driver when targeting Postgres.
+    if u.startswith("postgresql://") and not u.startswith("postgresql+"):
+        u = "postgresql+psycopg://" + u[len("postgresql://"):]
+
+    return u
+
+
 engine = None
 SessionLocal = None
 
@@ -15,7 +31,7 @@ def configure_database(database_url: str | None = None) -> None:
     global engine
     global SessionLocal
 
-    url = database_url or _get_database_url()
+    url = _normalize_database_url(database_url or _get_database_url())
 
     connect_args = {}
     if url.startswith("sqlite"):
