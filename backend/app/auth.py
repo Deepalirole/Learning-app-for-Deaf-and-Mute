@@ -60,12 +60,27 @@ def _frontend_url() -> str:
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    frontend_url = _frontend_url().strip()
+    inferred_prod = frontend_url.startswith("https://")
+
+    secure_env = os.getenv("COOKIE_SECURE")
+    if secure_env is not None:
+        secure = secure_env.strip().lower() in {"1", "true", "yes"}
+    else:
+        secure = inferred_prod
+
+    samesite_env = os.getenv("COOKIE_SAMESITE")
+    if samesite_env is not None and samesite_env.strip():
+        samesite = samesite_env.strip().lower()
+    else:
+        samesite = "none" if inferred_prod else "lax"
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=secure,
+        samesite=samesite,
         max_age=60 * 60 * 24 * 7,
         path="/",
     )
