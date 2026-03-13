@@ -20,6 +20,13 @@ node_modules/
 dist/
 build/
 
+# Local build artifacts
+frontend/tailwind-build-test.css
+frontend/test-results/
+
+# Duplicated folder
+signlang-platform/
+
 # Coverage / test artifacts
 coverage/
 .coverage
