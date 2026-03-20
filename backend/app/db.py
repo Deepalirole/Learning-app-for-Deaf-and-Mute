@@ -13,11 +13,13 @@ def _normalize_database_url(url: str) -> str:
         return u
 
     # Render (and some providers) use postgres:// which SQLAlchemy expects as postgresql://
-    if u.startswith("postgres://"):
+    u_lower = u.lower()
+    if u_lower.startswith("postgres://"):
         u = "postgresql://" + u[len("postgres://"):]
 
     # Ensure SQLAlchemy uses psycopg v3 driver when targeting Postgres.
-    if u.startswith("postgresql://") and not u.startswith("postgresql+"):
+    u_lower = u.lower()
+    if u_lower.startswith("postgresql://") and not u_lower.startswith("postgresql+"):
         u = "postgresql+psycopg://" + u[len("postgresql://"):]
 
     return u
