@@ -60,8 +60,8 @@ def db_url(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def client(db_url):
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     storage = getattr(limiter, "storage", None) or getattr(limiter, "_storage", None)
     if storage is not None:
@@ -198,8 +198,8 @@ def test_integration_d_password_reset_full_flow(client, db_url):
 
 def test_integration_e_multi_user_concurrent_detect_load(db_url, monkeypatch, tmp_path):
     # Separate client instances per thread, shared DB.
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     storage = getattr(limiter, "storage", None) or getattr(limiter, "_storage", None)
     if storage is not None:

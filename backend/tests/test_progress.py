@@ -30,8 +30,8 @@ def db_url(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def client(db_url):
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     with TestClient(app) as c:
         signup = c.post(
@@ -60,8 +60,8 @@ def test_progress_endpoint_returns_required_fields(client):
 
 
 def test_streak_increments_and_resets(db_url):
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
     with Session(engine) as session:
@@ -138,8 +138,8 @@ def test_accuracy_calculation_exact(client, db_url):
 
 
 def test_leaderboard_privacy_and_sorting(db_url):
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
     with Session(engine) as session:
@@ -165,8 +165,8 @@ def test_leaderboard_privacy_and_sorting(db_url):
 
 
 def test_badges_unlock(db_url):
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
     with Session(engine) as session:

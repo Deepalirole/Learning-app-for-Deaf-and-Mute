@@ -34,8 +34,8 @@ def db_url(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def client(db_url):
-    db_module.configure_database(db_url)
     command.upgrade(_alembic_config(db_url), "head")
+    db_module.configure_database(db_url)
 
     storage = getattr(limiter, "storage", None) or getattr(limiter, "_storage", None)
     if storage is not None:
