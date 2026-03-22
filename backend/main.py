@@ -68,15 +68,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SignLearn AI Platform API", lifespan=lifespan)
 
-_cors_env = os.getenv("CORS_ALLOW_ORIGINS")
-if _cors_env:
-    _allow_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
-else:
-    _allow_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allow_origins,
+    allow_origins=[os.getenv("FRONTEND_URL", "https://signlearnapi.netlify.app")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
