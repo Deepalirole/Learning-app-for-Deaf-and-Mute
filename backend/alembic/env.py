@@ -31,6 +31,22 @@ target_metadata = Base.metadata
 # ... etc.
 
 
+def _normalize_db_url(url: str) -> str:
+    u = (url or "").strip()
+    if not u:
+        return u
+
+    u_lower = u.lower()
+    if u_lower.startswith("postgres://"):
+        u = "postgresql://" + u[len("postgres://"):]
+
+    u_lower = u.lower()
+    if u_lower.startswith("postgresql://") and not u_lower.startswith("postgresql+"):
+        u = "postgresql+psycopg://" + u[len("postgresql://"):]
+
+    return u
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -44,6 +60,7 @@ def run_migrations_offline() -> None:
 
     """
     url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+    url = _normalize_db_url(url)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -66,7 +83,7 @@ def run_migrations_online() -> None:
     """
     db_url = os.getenv("DATABASE_URL")
     if db_url:
-        config.set_main_option("sqlalchemy.url", db_url)
+        config.set_main_option("sqlalchemy.url", _normalize_db_url(db_url))
 
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),

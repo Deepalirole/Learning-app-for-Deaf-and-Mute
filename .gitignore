@@ -8,6 +8,8 @@ __pycache__/
 *.db
 .venv/
 venv/
+backend/.tmp_pip/
+backend/.tmp_pip2/
 
 # Python
 .pytest_cache/
@@ -33,6 +35,9 @@ coverage/
 
 # Logs
 *.log
+
+# Local debug helpers
+backend/inspect_local_db.py
 
 # IDE
 .vscode/

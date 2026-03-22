@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 
@@ -29,6 +29,38 @@ engine = None
 SessionLocal = None
 
 
+def _ensure_sqlite_schema(engine) -> None:
+    inspector = inspect(engine)
+
+    if not inspector.has_table("users"):
+        return
+
+    existing_cols = {c["name"] for c in inspector.get_columns("users")}
+    expected_cols = {
+        "name": "TEXT",
+        "last_active": "DATETIME",
+        "reset_token": "TEXT",
+        "reset_token_expires": "DATETIME",
+    }
+
+    with engine.begin() as conn:
+        for col, coltype in expected_cols.items():
+            if col not in existing_cols:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {coltype}"))
+
+        if "name" in expected_cols and "name" not in existing_cols and "username" in existing_cols:
+            conn.execute(text("UPDATE users SET name = username WHERE name IS NULL"))
+
+
+def _ensure_sqlite_tables(engine) -> None:
+    try:
+        from app.models import Base
+    except Exception:
+        return
+
+    Base.metadata.create_all(bind=engine)
+
+
 def configure_database(database_url: str | None = None) -> None:
     global engine
     global SessionLocal
@@ -40,6 +72,10 @@ def configure_database(database_url: str | None = None) -> None:
         connect_args = {"check_same_thread": False}
 
     engine = create_engine(url, connect_args=connect_args)
+
+    if url.startswith("sqlite"):
+        _ensure_sqlite_schema(engine)
+        _ensure_sqlite_tables(engine)
 
     if url.startswith("sqlite"):
         @event.listens_for(engine, "connect")
