@@ -42,7 +42,15 @@ api.interceptors.response.use(
     if (!original) throw error
     if (original._skipAuthRefresh) throw error
 
-    if (status === 401 && !original._retry) {
+    // Do not try refresh on failed login/signup etc. — avoids a bogus /auth/refresh-token 401 in the console.
+    const urlPath = original.url || ''
+    const skipRefreshForAuth =
+      urlPath.includes('/auth/login') ||
+      urlPath.includes('/auth/signup') ||
+      urlPath.includes('/auth/forgot-password') ||
+      urlPath.includes('/auth/reset-password')
+
+    if (status === 401 && !original._retry && !skipRefreshForAuth) {
       original._retry = true
       try {
         const r = await api.post('/auth/refresh-token', null, {

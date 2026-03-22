@@ -6,7 +6,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
@@ -90,8 +90,16 @@ def _error_response(status_code: int, message: str) -> JSONResponse:
     return JSONResponse(status_code=status_code, content={"error": True, "message": message})
 
 
+def _normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+
 def _get_user_by_email(db: Session, email: str) -> User | None:
-    return db.scalar(select(User).where(User.email == email))
+    norm = _normalize_email(email)
+    if not norm:
+        return None
+    # Case-insensitive match (works for legacy rows that may not be lowercased)
+    return db.scalar(select(User).where(func.lower(User.email) == norm))
 
 
 def _get_user_by_reset_token(db: Session, token: str) -> User | None:
@@ -100,7 +108,8 @@ def _get_user_by_reset_token(db: Session, token: str) -> User | None:
 
 @router.post("/signup")
 def signup(payload: SignupRequest, response: Response, db: Session = Depends(get_db)):
-    existing = _get_user_by_email(db, payload.email)
+    email_norm = _normalize_email(str(payload.email))
+    existing = _get_user_by_email(db, email_norm)
     if existing:
         return _error_response(status.HTTP_400_BAD_REQUEST, "Email already exists")
 
@@ -108,7 +117,7 @@ def signup(payload: SignupRequest, response: Response, db: Session = Depends(get
         return _error_response(status.HTTP_400_BAD_REQUEST, "Weak password")
 
     user = User(
-        email=payload.email,
+        email=email_norm,
         hashed_password=hash_password(payload.password),
         name=payload.name,
         created_at=datetime.now(UTC).replace(tzinfo=None),
@@ -126,7 +135,7 @@ def signup(payload: SignupRequest, response: Response, db: Session = Depends(get
 
 @router.post("/login")
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    user = _get_user_by_email(db, payload.email)
+    user = _get_user_by_email(db, _normalize_email(str(payload.email)))
     if not user or not verify_password(payload.password, user.hashed_password):
         return _error_response(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
 
@@ -240,11 +249,13 @@ def update_profile(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if payload.email and payload.email != user.email:
-        existing = _get_user_by_email(db, payload.email)
-        if existing and existing.id != user.id:
-            return _error_response(status.HTTP_400_BAD_REQUEST, "Email already exists")
-        user.email = payload.email
+    if payload.email:
+        new_email = _normalize_email(str(payload.email))
+        if new_email != user.email:
+            existing = _get_user_by_email(db, new_email)
+            if existing and existing.id != user.id:
+                return _error_response(status.HTTP_400_BAD_REQUEST, "Email already exists")
+            user.email = new_email
 
     if payload.name is not None:
         user.name = payload.name
