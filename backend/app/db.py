@@ -52,15 +52,6 @@ def _ensure_sqlite_schema(engine) -> None:
             conn.execute(text("UPDATE users SET name = username WHERE name IS NULL"))
 
 
-def _ensure_sqlite_tables(engine) -> None:
-    try:
-        from app.models import Base
-    except Exception:
-        return
-
-    Base.metadata.create_all(bind=engine)
-
-
 def configure_database(database_url: str | None = None) -> None:
     global engine
     global SessionLocal
@@ -74,8 +65,10 @@ def configure_database(database_url: str | None = None) -> None:
     engine = create_engine(url, connect_args=connect_args)
 
     if url.startswith("sqlite"):
+        # Do not call Base.metadata.create_all() here: it creates tables without
+        # alembic_version, so a later `alembic upgrade` fails with "table already exists".
+        # Schema is applied via Alembic (see alembic/versions).
         _ensure_sqlite_schema(engine)
-        _ensure_sqlite_tables(engine)
 
     if url.startswith("sqlite"):
         @event.listens_for(engine, "connect")
