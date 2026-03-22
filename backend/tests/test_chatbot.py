@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from main import app
 from app.rate_limiter import limiter
+from services.chatbot_service import MISSING_GEMINI_KEY_MESSAGE
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +29,7 @@ def test_chatbot_returns_reply_for_valid_message(monkeypatch):
         return Resp()
 
     monkeypatch.setenv("GEMINI_API_KEY", "x")
-    monkeypatch.setattr("app.chatbot.requests.post", fake_post)
+    monkeypatch.setattr("services.chatbot_service.requests.post", fake_post)
 
     with TestClient(app) as c:
         r = c.post("/chatbot/message", json={"message": "How do I use the camera?", "conversation_history": []})
@@ -55,7 +56,7 @@ def test_conversation_history_used(monkeypatch):
         return Resp()
 
     monkeypatch.setenv("GEMINI_API_KEY", "x")
-    monkeypatch.setattr("app.chatbot.requests.post", fake_post)
+    monkeypatch.setattr("services.chatbot_service.requests.post", fake_post)
 
     history = [
         {"role": "user", "content": "I can't see any hand landmarks"},
@@ -77,6 +78,14 @@ def test_chatbot_stays_on_topic(monkeypatch):
         assert "sign" in reply or "camera" in reply or "app" in reply
 
 
+def test_missing_gemini_key_returns_friendly_message(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    with TestClient(app) as c:
+        r = c.post("/chatbot/message", json={"message": "hey", "conversation_history": []})
+        assert r.status_code == 200
+        assert r.json()["reply"] == MISSING_GEMINI_KEY_MESSAGE
+
+
 def test_empty_message_rejected():
     with TestClient(app) as c:
         r = c.post("/chatbot/message", json={"message": "", "conversation_history": []})
@@ -96,7 +105,7 @@ def test_rate_limit_enforced(monkeypatch):
         return Resp()
 
     monkeypatch.setenv("GEMINI_API_KEY", "x")
-    monkeypatch.setattr("app.chatbot.requests.post", fake_post)
+    monkeypatch.setattr("services.chatbot_service.requests.post", fake_post)
 
     with TestClient(app) as c:
         for _ in range(20):
@@ -112,9 +121,10 @@ def test_gemini_failure_gracefully_handled(monkeypatch):
         raise RuntimeError("gemini down")
 
     monkeypatch.setenv("GEMINI_API_KEY", "x")
-    monkeypatch.setattr("app.chatbot.requests.post", fake_post)
+    monkeypatch.setattr("services.chatbot_service.requests.post", fake_post)
 
     with TestClient(app) as c:
         r = c.post("/chatbot/message", json={"message": "Hello", "conversation_history": []})
         assert r.status_code == 200
-        assert r.json()["reply"] == "I'm having trouble right now. Please contact deepalirole@gmail.com"
+        assert "try again" in r.json()["reply"].lower()
+        assert "deepalirole@gmail.com" in r.json()["reply"]
