@@ -13,9 +13,9 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: http://localhost:5173
+        value: https://signlearnapi.netlify.app
       - key: CORS_ALLOW_ORIGINS
-        value: http://localhost:5173,http://127.0.0.1:5173
+        value: https://signlearnapi.netlify.app,http://localhost:5173,http://127.0.0.1:5173
 
 databases:
   - name: signlearn-db

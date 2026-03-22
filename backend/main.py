@@ -68,9 +68,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SignLearn AI Platform API", lifespan=lifespan)
 
+
+def _cors_allow_origins() -> list[str]:
+    """Match Render/CI: CORS_ALLOW_ORIGINS (comma-separated) or FRONTEND_URL, then default."""
+    cors = (os.getenv("CORS_ALLOW_ORIGINS") or "").strip()
+    if cors:
+        return [o.strip() for o in cors.split(",") if o.strip()]
+    front = (os.getenv("FRONTEND_URL") or "").strip()
+    if front:
+        return [front]
+    return ["https://signlearnapi.netlify.app"]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "https://signlearnapi.netlify.app")],
+    allow_origins=_cors_allow_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
