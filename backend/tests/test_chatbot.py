@@ -17,6 +17,29 @@ def _reset_rate_limiter_storage():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _mock_gemini_calls(monkeypatch):
+    """
+    CI may set GEMINI_API_KEY. Ensure no test ever calls Gemini live.
+    Individual tests can still override the mocked post() when they need
+    to assert prompt formatting.
+    """
+
+    def fake_post(url, params=None, json=None, timeout=None):
+        class Resp:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"candidates": [{"content": {"parts": [{"text": "OK"}]}}]}
+
+        return Resp()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "x")
+    monkeypatch.setattr("services.chatbot_service.requests.post", fake_post)
+    yield
+
+
 def test_chatbot_returns_reply_for_valid_message(monkeypatch):
     def fake_post(url, params=None, json=None, timeout=None):
         class Resp:
